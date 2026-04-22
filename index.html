@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SGE - Portaria Digital</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a3a5f; --secondary: #3498db; --success: #2ecc71;
+            --danger: #e74c3c; --light: #f8f9fa; --dark: #2c3e50;
+            --cor-servidor: #e74c3c; --cor-oficial: #000000; --cor-terceiro: #27ae60;
+        }
+
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #e9ecef; margin: 0; padding: 6px; color: #333; font-size: 12px; }
+        
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+        .header-sys { text-align: center; border-bottom: 2px solid var(--primary); padding-bottom: 6px; margin-bottom: 10px; }
+        .header-sys h1 { margin: 0; color: var(--primary); font-size: 15px; text-transform: uppercase; }
+        
+        .user-box { background: #fff3cd; padding: 6px 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #ffeeba; display: flex; flex-direction: column; gap: 5px; }
+        @media (min-width: 600px) { .user-box { flex-direction: row; align-items: center; justify-content: space-between; } }
+
+        .nav-tabs { display: flex; overflow-x: auto; gap: 2px; margin-bottom: 10px; border-bottom: 1px solid #ddd; }
+        .tab-link { padding: 8px 12px; border: none; background: #f1f3f5; cursor: pointer; font-weight: 600; border-radius: 5px 5px 0 0; color: #6c757d; font-size: 11px; flex: 1; text-align: center; }
+        .tab-link.active { background: var(--primary); color: white; }
+
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+
+        .grid-form { display: grid; grid-template-columns: 1fr; gap: 6px; background: var(--light); padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #ddd; }
+        @media (min-width: 768px) { .grid-form { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); } }
+        
+        input, select { width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; text-transform: uppercase; height: 34px; }
+
+        .search-bar { background: #e3f2fd; border: 1px solid #bbdefb; margin-bottom: 8px; padding: 8px; border-radius: 4px; display: flex; gap: 5px; }
+
+        .btn-group { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+        .btn { padding: 8px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: 1; transition: 0.2s; min-height: 34px; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-print { background: var(--secondary); color: white; }
+        .btn-excel { background: #217346; color: white; }
+
+        .table-container { overflow-x: auto; border: 1px solid #eee; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        th { background: var(--dark); color: white; padding: 8px; text-align: left; font-size: 10px; text-transform: uppercase; position: sticky; top: 0; }
+        td { padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 11px; }
+
+        .placa-badge { display: inline-block; padding: 3px 6px; border-radius: 3px; color: white; font-weight: bold; font-family: monospace; font-size: 11px; background: #7f8c8d; }
+        .placa-servidor { background: var(--cor-servidor) !important; }
+        .placa-oficial { background: var(--cor-oficial) !important; }
+        .placa-terceiro { background: var(--cor-terceiro) !important; }
+
+        .edit-hint { color: var(--secondary); font-weight: bold; cursor: pointer; }
+
+        @media print {
+            .no-print, .nav-tabs, .grid-form, .btn, .user-box, .search-bar { display: none !important; }
+            .content-section { display: none !important; }
+            .content-section.active { display: block !important; }
+            .print-header { display: block !important; text-align: center; border-bottom: 2px solid #000; margin-bottom: 15px; }
+            table { width: 100% !important; border: 1px solid #000; }
+            th { background: #eee !important; color: #000 !important; border: 1px solid #000; }
+            td { border: 1px solid #ccc; }
+        }
+        .print-header { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-sys no-print">
+        <h1>SGE - Gestão Portaria</h1>
+    </div>
+
+    <div class="user-box no-print">
+        <div><strong>Operador:</strong> <span id="displayOp">---</span></div>
+        <input type="text" id="operadorNome" placeholder="Alterar Operador" style="max-width: 150px; height: 28px; font-size: 11px;" onchange="atualizarOperador(this.value)">
+    </div>
+
+    <nav class="nav-tabs no-print">
+        <button class="tab-link active" onclick="openTab(event, 'tab-patio')">Pátio</button>
+        <button class="tab-link" onclick="openTab(event, 'tab-cadastros')">Funcionários</button>
+        <button class="tab-link" onclick="openTab(event, 'tab-historico')">Relatório</button>
+    </nav>
+
+    <div id="tab-patio" class="content-section active">
+        <div class="print-header"><h2>VEÍCULOS NO PÁTIO</h2></div>
+        
+        <div class="grid-form no-print">
+            <input type="text" id="pPlaca" placeholder="PLACA" oninput="mascaraPlaca(this)" onkeyup="checkPlaca(this.value)" maxlength="8">
+            <input type="text" id="pNome" placeholder="NOME">
+            <input type="text" id="pVeic" placeholder="VEÍCULO">
+            <input type="text" id="pCor" placeholder="COR">
+            <select id="pTipo">
+                <option value="VISITANTE">VISITANTE</option>
+                <option value="SERVIDOR">SERVIDOR</option>
+                <option value="OFICIAL">OFICIAL</option>
+                <option value="TERCEIRIZADO">TERCEIRIZADO</option>
+            </select>
+            <div style="display: flex; gap: 5px;">
+                <button class="btn btn-success" onclick="entrada()">Entrada</button>
+                <button class="btn btn-danger" onclick="saidaPorPlaca()">Saída</button>
+            </div>
+        </div>
+
+        <div class="search-bar no-print">
+            <input type="text" id="buscaPatio" placeholder="🔍 Filtrar pátio..." onkeyup="render()">
+        </div>
+
+        <div style="margin-bottom: 5px; display: flex; justify-content: space-between;">
+            <strong>Ocupação: <span id="cont">0</span></strong>
+            <button class="btn btn-print no-print" style="max-width: 100px;" onclick="window.print()">🖨️ Imprimir</button>
+        </div>
+
+        <div class="table-container">
+            <table id="tblPatio">
+                <thead><tr><th>Placa</th><th>Tipo</th><th>Nome</th><th>Veículo</th><th>Cor</th><th>Hora</th><th class="no-print">Ação</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-cadastros" class="content-section">
+        <div class="print-header"><h2>LISTA DE CADASTROS</h2></div>
+        
+        <div class="grid-form no-print">
+            <input type="text" id="cNome" placeholder="NOME COMPLETO">
+            <input type="text" id="cPlaca" placeholder="PLACA" oninput="mascaraPlaca(this)" maxlength="8">
+            <input type="text" id="cVeic" placeholder="VEÍCULO">
+            <input type="text" id="cCor" placeholder="COR">
+            <select id="cTipo">
+                <option value="SERVIDOR">SERVIDOR</option>
+                <option value="OFICIAL">OFICIAL</option>
+                <option value="TERCEIRIZADO">TERCEIRIZADO</option>
+            </select>
+            <button class="btn btn-success" onclick="cadastrar()">Salvar Cadastro</button>
+        </div>
+
+        <div class="search-bar no-print">
+            <input type="text" id="buscaCad" placeholder="🔍 Buscar funcionário..." onkeyup="render()">
+        </div>
+
+        <div class="btn-group no-print">
+            <button class="btn btn-excel" onclick="exportarExcel()">📥 Exportar</button>
+            <label class="btn btn-excel" style="background:#8e44ad; cursor:pointer;">
+                📤 Importar <input type="file" style="display:none" onchange="importarExcel(this)">
+            </label>
+            <button class="btn btn-print" onclick="window.print()">🖨️ Imprimir</button>
+        </div>
+
+        <div class="table-container">
+            <table id="tblCad">
+                <thead><tr><th>Nome</th><th>Placa</th><th>Vínculo</th><th>Veículo</th><th>Cor</th><th class="no-print">Ação</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-historico" class="content-section">
+        <div class="print-header"><h2>RELATÓRIO DE MOVIMENTAÇÃO</h2></div>
+        
+        <div class="grid-form no-print">
+            <input type="date" id="filtroData" onchange="renderHistorico()">
+            <input type="text" id="buscaHist" placeholder="🔍 Buscar no histórico..." onkeyup="renderHistorico()">
+        </div>
+
+        <div class="btn-group no-print">
+            <button class="btn btn-excel" onclick="exportarHistoricoExcel()">📥 Exportar Relatório</button>
+            <button class="btn btn-print" onclick="window.print()">🖨️ PDF</button>
+            <button class="btn btn-danger" onclick="limparHistorico()">Limpar</button>
+        </div>
+
+        <div class="table-container">
+            <table id="tblHist">
+                <thead><tr><th>Placa</th><th>Nome</th><th>Veículo</th><th>Cor</th><th>Entrada</th><th>Saída</th><th>Tempo</th><th>Operador</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let db = {
+        servidores: JSON.parse(localStorage.getItem('SGE_servidores')) || [],
+        patio: JSON.parse(localStorage.getItem('SGE_patio')) || [],
+        historico: JSON.parse(localStorage.getItem('SGE_historico')) || []
+    };
+
+    function mascaraPlaca(el) {
+        let v = el.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (v.length > 3) {
+            v = v.slice(0, 3) + "-" + v.slice(3, 7);
+        }
+        el.value = v;
+    }
+
+    function atualizarOperador(val) {
+        localStorage.setItem('SGE_operador', val);
+        document.getElementById('displayOp').innerText = val.toUpperCase() || "---";
+    }
+
+    atualizarOperador(localStorage.getItem('SGE_operador') || "");
+    document.getElementById('operadorNome').value = localStorage.getItem('SGE_operador') || "";
+
+    function sync() {
+        localStorage.setItem('SGE_servidores', JSON.stringify(db.servidores));
+        localStorage.setItem('SGE_patio', JSON.stringify(db.patio));
+        localStorage.setItem('SGE_historico', JSON.stringify(db.historico));
+        render();
+    }
+
+    function openTab(evt, name) {
+        document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.tab-link').forEach(b => b.classList.remove('active'));
+        document.getElementById(name).classList.add('active');
+        evt.currentTarget.classList.add('active');
+        if(name === 'tab-historico') renderHistorico();
+    }
+
+    function getClassePlaca(tipo) {
+        if(tipo === 'SERVIDOR') return 'placa-servidor';
+        if(tipo === 'OFICIAL') return 'placa-oficial';
+        if(tipo === 'TERCEIRIZADO') return 'placa-terceiro';
+        return '';
+    }
+
+    function editarMotorista(indexNoPatio) {
+        const veiculo = db.patio[indexNoPatio];
+        const novoNome = prompt(`Alterar motorista do veículo oficial (${veiculo.placa}):`, veiculo.nome);
+        if (novoNome !== null && novoNome.trim() !== "") {
+            db.patio[indexNoPatio].nome = novoNome.toUpperCase();
+            sync();
+        }
+    }
+
+    function checkPlaca(v) {
+        const p = v.toUpperCase().trim();
+        const f = db.servidores.find(s => s.placa === p);
+        if(f) {
+            document.getElementById('pNome').value = f.nome;
+            document.getElementById('pVeic').value = f.veiculo;
+            document.getElementById('pCor').value = f.cor || "";
+            document.getElementById('pTipo').value = f.tipo;
+        } else {
+            document.getElementById('pTipo').value = "VISITANTE";
+        }
+    }
+
+    function cadastrar() {
+        const nome = document.getElementById('cNome').value.toUpperCase();
+        const placa = document.getElementById('cPlaca').value.toUpperCase().trim();
+        const veic = document.getElementById('cVeic').value.toUpperCase();
+        const cor = document.getElementById('cCor').value.toUpperCase();
+        if(!nome || !placa) return alert("Preencha Nome e Placa!");
+        db.servidores.push({ nome, placa, veiculo: veic, cor: cor, tipo: document.getElementById('cTipo').value });
+        document.getElementById('cNome').value = ""; document.getElementById('cPlaca').value = "";
+        document.getElementById('cVeic').value = ""; document.getElementById('cCor').value = "";
+        sync();
+    }
+
+    function entrada() {
+        const placa = document.getElementById('pPlaca').value.toUpperCase().trim();
+        if(!placa) return alert("Informe a placa!");
+        if(db.patio.some(v => v.placa === placa)) return alert("Já está no pátio!");
+        
+        db.patio.push({ 
+            placa, 
+            nome: document.getElementById('pNome').value.toUpperCase(),
+            veiculo: document.getElementById('pVeic').value.toUpperCase(),
+            cor: document.getElementById('pCor').value.toUpperCase(),
+            tipo: document.getElementById('pTipo').value,
+            entrada: new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
+            ts: Date.now()
+        });
+        limparFormPatio(); sync();
+    }
+
+    function registrarSaida(i) {
+        const v = db.patio[i];
+        const op = localStorage.getItem('SGE_operador') || "SISTEMA";
+        db.historico.push({
+            ...v,
+            saida: new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
+            isoData: new Date().toISOString().split('T')[0],
+            tempo: Math.round((Date.now()-v.ts)/60000)+' min',
+            operador: op.toUpperCase()
+        });
+        db.patio.splice(i, 1); sync();
+    }
+
+    function saidaPorPlaca() {
+        const placa = document.getElementById('pPlaca').value.toUpperCase().trim();
+        const index = db.patio.findIndex(v => v.placa === placa);
+        if (index === -1) return alert("Não encontrado no pátio!");
+        registrarSaida(index); limparFormPatio();
+    }
+
+    function limparFormPatio() {
+        document.getElementById('pPlaca').value = ""; document.getElementById('pNome').value = "";
+        document.getElementById('pVeic').value = ""; document.getElementById('pCor').value = "";
+        document.getElementById('pTipo').value = "VISITANTE";
+    }
+
+    function render() {
+        const buscaP = document.getElementById('buscaPatio').value.toUpperCase();
+        const tp = document.querySelector("#tblPatio tbody");
+        tp.innerHTML = "";
+        const pF = db.patio.filter(p => p.nome.includes(buscaP) || p.placa.includes(buscaP));
+        document.getElementById('cont').innerText = pF.length;
+        
+        pF.forEach((p) => {
+            const indexOriginal = db.patio.indexOf(p);
+            const nomeExibicao = p.tipo === 'OFICIAL' 
+                ? `<span class="edit-hint" onclick="editarMotorista(${indexOriginal})" title="Clique para alterar motorista">${p.nome} 📝</span>`
+                : p.nome;
+
+            tp.innerHTML += `<tr>
+                <td><span class="placa-badge ${getClassePlaca(p.tipo)}">${p.placa}</span></td>
+                <td>${p.tipo}</td>
+                <td>${nomeExibicao}</td>
+                <td>${p.veiculo}</td>
+                <td>${p.cor || '-'}</td>
+                <td>${p.entrada}</td>
+                <td class="no-print"><button class="btn btn-danger" style="padding:4px 8px;" onclick="registrarSaida(${indexOriginal})">Saída</button></td>
+            </tr>`;
+        });
+
+        const buscaC = document.getElementById('buscaCad').value.toUpperCase();
+        const tc = document.querySelector("#tblCad tbody");
+        tc.innerHTML = "";
+        db.servidores.filter(s => s.nome.includes(buscaC) || s.placa.includes(buscaC)).forEach((s) => {
+            tc.innerHTML += `<tr>
+                <td>${s.nome}</td>
+                <td><span class="placa-badge ${getClassePlaca(s.tipo)}">${s.placa}</span></td>
+                <td>${s.tipo}</td><td>${s.veiculo}</td><td>${s.cor || '-'}</td>
+                <td class="no-print"><button class="btn btn-danger" style="padding:4px 8px;" onclick="db.servidores.splice(${db.servidores.indexOf(s)},1);sync()">X</button></td>
+            </tr>`;
+        });
+    }
+
+    function renderHistorico() {
+        const tbody = document.querySelector("#tblHist tbody");
+        tbody.innerHTML = "";
+        const dataF = document.getElementById('filtroData').value;
+        const buscaH = document.getElementById('buscaHist').value.toUpperCase();
+        db.historico.filter(h => h.isoData === dataF && (h.nome.includes(buscaH) || h.placa.includes(buscaH))).reverse().forEach(h => {
+            tbody.innerHTML += `<tr>
+                <td><span class="placa-badge ${getClassePlaca(h.tipo)}">${h.placa}</span></td>
+                <td>${h.nome}</td><td>${h.veiculo}</td><td>${h.cor || '-'}</td><td>${h.entrada}</td><td>${h.saida}</td><td>${h.tempo}</td><td>${h.operador}</td>
+            </tr>`;
+        });
+    }
+
+    function exportarExcel() {
+        const dados = db.servidores.map(s => ({ "NOME": s.nome, "PLACA": s.placa, "VINCULO": s.tipo, "VEICULO": s.veiculo, "COR": s.cor || "" }));
+        const ws = XLSX.utils.json_to_sheet(dados);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Cadastros");
+        XLSX.writeFile(wb, "SGE_Cadastros.xlsx");
+    }
+
+    function exportarHistoricoExcel() {
+        const dados = db.historico.map(h => ({ "PLACA": h.placa, "NOME": h.nome, "VEICULO": h.veiculo, "COR": h.cor || "", "ENTRADA": h.entrada, "SAIDA": h.saida, "OPERADOR": h.operador, "DATA": h.isoData }));
+        const ws = XLSX.utils.json_to_sheet(dados);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
+        XLSX.writeFile(wb, "Relatorio_Portaria.xlsx");
+    }
+
+    function importarExcel(input) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, {type: 'array'});
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            json.forEach(r => {
+                let pRaw = (r.PLACA || r.Placa || "").toString().toUpperCase().replace(/[^A-Z0-9]/g, "");
+                let pFormat = pRaw.length > 3 ? pRaw.slice(0,3) + "-" + pRaw.slice(3,7) : pRaw;
+                
+                db.servidores.push({
+                    nome: (r.NOME || r.Nome || "").toString().toUpperCase(),
+                    placa: pFormat,
+                    veiculo: (r.VEICULO || r.Veiculo || "").toString().toUpperCase(),
+                    cor: (r.COR || r.Cor || "").toString().toUpperCase(),
+                    tipo: (r.VINCULO || r.Tipo || "SERVIDOR").toUpperCase()
+                });
+            });
+            sync(); alert("Importação concluída!");
+        };
+        reader.readAsArrayBuffer(input.files[0]);
+    }
+
+    function limparHistorico() { if(confirm("Apagar histórico?")) { db.historico = []; sync(); renderHistorico(); } }
+    document.getElementById('filtroData').valueAsDate = new Date();
+    render();
+</script>
+</body>
+</html>
